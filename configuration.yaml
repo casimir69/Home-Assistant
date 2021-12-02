@@ -1,0 +1,50 @@
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+
+homeassistant:
+  name: Casimir's Home
+  latitude: !secret latitude
+  longitude: !secret longitude
+  elevation: !secret elevation
+  unit_system: metric
+  temperature_unit: c
+  time_zone: Europe/Paris
+  external_url: !secret external_url
+  internal_url: !secret internal_url
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+sensor: !include sensors.yaml
+notify: !include notifications.yaml
+anniversaries: !include anniversaries.yaml
+
+frontend:
+  themes: !include_dir_merge_named themes
+
+freebox:
+  host: !secret freebox_host
+  port: !secret freebox_port
+
+freebox_player:
+  remote_code: !secret fb-p_remote_code
+  host: !secret fb-p_host
+
+nissan_leaf:
+  username: !secret nissan_leaf_username 
+  password: !secret nissan_leaf_password
+  region: !secret nissan_leaf_region
+  update_interval:
+    hours: 1
+
+synology_dsm:
+  - host: !secret synology_dsm_host
+    username: !secret synology_dsm_username
+    password: !secret synology_dsm_password
+    port: !secret synology_dsm_port
+    ssl: true

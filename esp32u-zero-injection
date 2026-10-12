@@ -1,0 +1,276 @@
+substitutions:
+  name: esp32u-zero-injection
+  my_hours: '23'
+  my_minute: '59'
+  my_second: '59'
+  reset_interval: '30s'
+  powermeter_name: 'jsy1039_active'
+
+esphome:
+  name: ${name}
+
+esp32:
+  board: esp32dev
+  cpu_frequency: 240Mhz
+  framework:
+    type: esp-idf
+    version: 'recommended'
+
+wifi:
+  ssid: !secret freebox_wifi_ssid
+  password: !secret freebox_wifi_password
+
+  ap: 
+    ssid: "AP zero-injection"
+    password: zero-injection
+
+api:
+  batch_delay: 50ms
+  encryption:
+    key: !secret esp32u_zero_injection__encryption_key
+
+ota:
+  - platform: esphome
+    
+logger:
+  # hardware_uart: USB_SERIAL_JTAG
+   baud_rate: 0
+   level: verbose    
+
+debug:
+  update_interval: 5s
+
+time:
+  - platform: sntp
+    id: my_time
+
+uart:
+  id: uart_0
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 9600
+
+modbus:
+  - id: modbus_0
+    uart_id: uart_0
+    send_wait_time: 100ms
+
+external_components:
+  - source: "github://SeByDocKy/myESPhome/"
+    components: [output_combined, sensor_combined]
+    refresh: 10s 
+            
+sensor:
+
+  - platform: wifi_signal
+    name: ${name}_wifi_power
+    id: wifi_power
+    update_interval: 5s
+    
+  - platform: uptime
+    id: uptime_sec
+     
+  - platform: debug
+    free:
+      name: ${name}_heap_free
+    loop_time:
+      name: ${name}_loop_time
+      
+  - platform: sensor_combined
+    id: total_power
+    name: ${name}_total_power
+    unit_of_measurement: 'W'
+    icon: mdi:power
+    device_class: 'power'
+    state_class: 'measurement'
+    operation: 'sum'   # sum / mean / prod
+    sensors:
+      - hms1_inverter_power
+      - hms2_inverter_power
+      - hms3_inverter_power
+      
+text_sensor:
+   
+  - platform: template
+    name: ${name}_uptime
+    lambda: |-
+      int seconds = (id(uptime_sec).state);
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600); 
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      seconds = seconds % 60;
+      if ( days ) {
+        return { (std::to_string(days) +"d " + std::to_string(hours) +"h " + std::to_string(minutes) +"m "+ std::to_string(seconds) +"s ").c_str() };
+      } else if ( hours ) {
+        return { (std::to_string(hours) +"h " + std::to_string(minutes) +"m "+ std::to_string(seconds) +"s ").c_str() };
+      } else if ( minutes ) {
+        return { (std::to_string(minutes) +"m "+ std::to_string(seconds) +"s ").c_str() };
+      } else {
+        return { (std::to_string(seconds) +"s ").c_str() };
+      }  
+    icon: mdi:clock-start
+    update_interval: 113s
+    
+  - plateform: wifi_info
+    ip_address:
+      name: "esp32u-zero-injection IP"
+    ssid:
+      name: "esp32u-zero-injection SSID Wifi"
+    bssid:
+      name: "esp32-zero-injection BSSID"
+
+  - plateform: version
+    name: "Version ESPHome
+
+packages:
+  cmt2300a:
+    url: https://github.com/SeByDocKy/myESPhome/
+    ref: main
+    refresh: 0s
+    files:
+      - path: 'code/device_cmt2300a.yaml'
+        vars:
+          # GPIO dispo sur ESP32-WROOM-32U 38PIN
+          cmt2300a_id: 'cmt_radio'
+          cmt2300a_name: 'cmt2300a'
+          cmt2300a_clk_pin: 'GPIO18'
+          cmt2300a_sdio_pin: 'GPIO19'
+          cmt2300a_cs_pin: 'GPIO27'
+          cmt2300a_fcs_pin: 'GPIO26'
+          
+          
+  hms1:
+    url: https://github.com/SeByDocKy/myESPhome/
+    ref: main
+    refresh: 0s
+    files:
+      - path: 'code/device_hms-2t.yaml'
+        vars:
+          hms_id: 'hms1'
+          hms_name: 'hms1'
+          hms_cmt2300a_id: 'cmt_radio'
+          hms_sn: !secret hms1000_est_sn1
+          hms_poll_interval: '4s'
+          
+  hms2:
+    url: https://github.com/SeByDocKy/myESPhome/
+    ref: main
+    refresh: 0s
+    files:
+      - path: 'code/device_hms-2t.yaml'
+        vars:
+          hms_id: 'hms2'
+          hms_name: 'hms2'
+          hms_cmt2300a_id: 'cmt_radio'
+          hms_sn: !secret hms1000_est_sn2
+          hms_poll_interval: '4s'  
+
+  hms3:
+    url: https://github.com/SeByDocKy/myESPhome/
+    ref: main
+    refresh: 0s
+    files:
+      - path: 'code/device_hms-1t.yaml'
+        vars:
+          hms_id: 'hms3'
+          hms_name: 'hms3'
+          hms_cmt2300a_id: 'cmt_radio'
+          hms_sn: !secret hms500_est_sn3
+          hms_poll_interval: '4s'
+
+  powermeter:
+    url: https://github.com/SeByDocKy/myESPhome/
+    ref: main
+    refresh: 0s
+    files:
+      - path: 'code/device_jsy1039.yaml'
+        vars:
+          powermeter: 'jsy1039'
+          powermeter_modbus_id: 'modbus_0'
+          powermeter_address: '1'
+          powermeter_update_interval: '2s'
+          powermeter_template_update: '2s'
+                    
+          
+  minipid:
+    url: https://github.com/SeByDocKy/myESPhome/
+    ref: main
+    refresh: 0s
+    files:
+      - path: 'code/device_minipid.yaml'
+        vars:
+          minipid_id: 'pid'
+          minipid_name: 'pid'
+          minipid_input_id: 'jsy1039_active_power'
+          minipid_output_id: 'my_output_combined'
+          minipid_windows_size: 1
+          
+output:
+  - platform: output_combined
+    id: my_output_combined
+    outputs:
+      - hms1_power_limit_percent_output
+      - hms2_power_limit_percent_output
+      - hms3_power_limit_percent_output
+      
+fan:
+  - platform: speed
+    id: output_combined_command
+    name: ${name}_output_combined_command
+    output: my_output_combined     
+              
+button:
+  - platform: template
+    name: ${name}_hms_reset
+    id: hms_reset
+    on_press:
+      - button.press: hms1_reset
+      - button.press: hms2_reset
+      - button.press: hms3_reset
+
+  - platform: restart
+    name: "Restart esp32u-zero-injection"
+
+interval:
+  - interval: ${reset_interval}
+    then:
+      - if:
+          condition:
+            binary_sensor.is_off: hms1_reachable
+          then:
+            - button.press: hms1_reset
+      - if:
+          condition:
+            binary_sensor.is_off: hms2_reachable
+          then:
+            - button.press: hms2_reset
+      - if:
+          condition:
+            binary_sensor.is_off: hms3_reachable
+          then:
+            - button.press: hms3_reset
+
+i2c:
+  # GPIO dispo sur ESP32-WROOM-32U 38PIN
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+  id: i2c_display
+  
+font:
+  - file: "gfonts://Roboto"
+    id: font_display
+    size: 11
+
+display:
+  - platform: ssd1306_i2c
+    i2c_id: i2c_display
+    model: "SSD1306 128x64"      # boîtiers OpenDTU 128x32 : "SSD1306 128x32"
+    address: 0x3C
+    update_interval: 1s
+    lambda: |-
+      it.printf(0, 0,  id(font_display), "Total : %.0f W", id(total_power).state);
+      it.printf(0, 16, id(font_display), "Reg.  : %.0f W", id(jsy1039_active_power).state);
+      it.printf(0, 32, id(font_display), "PID   : %.1f %%", id(pid_output).state);
